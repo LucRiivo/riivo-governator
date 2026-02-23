@@ -264,6 +264,22 @@ export const getWebResourceAuditResult = query({
     },
 });
 
+// Migration helper: get all PP Admin connections (no tenant filter)
+export const getAllPPAdminConnections = query({
+    args: {},
+    handler: async (ctx) => {
+        return await ctx.db.query("pp_admin_connections").collect();
+    },
+});
+
+// Migration helper: get all App Insights connections (no tenant filter)
+export const getAllAppInsightsConnections = query({
+    args: {},
+    handler: async (ctx) => {
+        return await ctx.db.query("app_insights_connections").collect();
+    },
+});
+
 // Phase 5: Environment Storage Queries
 export const getPPAdminConnection = query({
     args: { tenantId: v.optional(v.string()) },

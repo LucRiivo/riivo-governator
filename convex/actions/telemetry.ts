@@ -2,6 +2,7 @@
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
+import { decrypt } from "../lib/crypto";
 const { api } = require("../_generated/api") as any;
 
 const APP_INSIGHTS_BASE = "https://api.applicationinsights.io/v1/apps";
@@ -21,7 +22,7 @@ async function resolveAppInsightsConnection(
     if (!connection) {
         throw new Error("No Application Insights connection configured for this tenant. Go to Settings > App Insights to connect.");
     }
-    return connection;
+    return { ...connection, apiKey: decrypt(connection.apiKey) };
 }
 
 async function executeKqlQuery(

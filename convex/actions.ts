@@ -2,18 +2,16 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
+import { decrypt } from "./lib/crypto";
+import { getD365AccessToken, resolveTenant } from "./lib/tokenHelper";
 const { api } = require("./_generated/api") as any;
 
 export const listFlows = action({
     args: { tenantId: v.string(), orgId: v.optional(v.string()) },
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
-        const tenant = tenants.find((t: any) => t.tenantId === args.tenantId);
-
-        if (!tenant) throw new Error("Tenant not found");
-
-        const sanitizedUrl = tenant.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         const url = `https://${sanitizedUrl}/api/data/v9.2/workflows?$filter=category eq 5&$select=name,statecode,workflowid,description`;
 
@@ -61,12 +59,8 @@ export const getFlowDefinition = action({
     args: { tenantId: v.string(), flowId: v.string(), orgId: v.optional(v.string()) },
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
-        const tenant = tenants.find((t: any) => t.tenantId === args.tenantId);
-
-        if (!tenant) throw new Error("Tenant not found");
-
-        const sanitizedUrl = tenant.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         const url = `https://${sanitizedUrl}/api/data/v9.2/workflows(${args.flowId})?$select=clientdata,name`;
 
@@ -98,12 +92,8 @@ export const listTables = action({
     args: { tenantId: v.string(), orgId: v.optional(v.string()) },
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
-        const tenant = tenants.find((t: any) => t.tenantId === args.tenantId);
-
-        if (!tenant) throw new Error("Tenant not found");
-
-        const sanitizedUrl = tenant.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         // Fetch EntityDefinitions (tables) from Dynamics
         const url = `https://${sanitizedUrl}/api/data/v9.2/EntityDefinitions?$select=LogicalName,DisplayName,EntitySetName,Description&$filter=IsCustomizable/Value eq true`;
@@ -147,12 +137,8 @@ export const getTableSchema = action({
     args: { tenantId: v.string(), logicalName: v.string(), orgId: v.optional(v.string()) },
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
-        const tenant = tenants.find((t: any) => t.tenantId === args.tenantId);
-
-        if (!tenant) throw new Error("Tenant not found");
-
-        const sanitizedUrl = tenant.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         // Fetch Attributes for the specific entity (MaxLength not available on base AttributeMetadata)
         const url = `https://${sanitizedUrl}/api/data/v9.2/EntityDefinitions(LogicalName='${args.logicalName}')/Attributes?$select=LogicalName,DisplayName,AttributeType,RequiredLevel,Description`;
@@ -186,26 +172,3 @@ export const getTableSchema = action({
         };
     }
 });
-
-
-async function getAccessToken(resource: string, publicClientId: string, clientSecret: string, tenantDirectoryId?: string): Promise<string> {
-    const authorityHostUrl = "https://login.microsoftonline.com";
-    const tenant = tenantDirectoryId || "common";
-    const authorityUrl = `${authorityHostUrl}/${tenant}/oauth2/v2.0/token`;
-
-    const body = new URLSearchParams();
-    body.append("scope", `https://${resource}/.default`);
-    body.append("client_id", publicClientId);
-    body.append("client_secret", clientSecret);
-    body.append("grant_type", "client_credentials");
-
-    const response = await fetch(authorityUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-    });
-
-    const data = await response.json();
-    if (data.error) throw new Error(data.error_description);
-    return data.access_token;
-}

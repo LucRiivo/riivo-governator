@@ -19,7 +19,7 @@ export default function AppInsightsConnection({ isOpen, onClose, tenantId, orgId
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [testing, setTesting] = useState(false);
 
-    const saveConnection = useMutation(api.mutations.saveAppInsightsConnection);
+    const saveConnection = useAction(api.actions.credentials.saveAppInsightsConnection);
     const deleteConnection = useMutation(api.mutations.deleteAppInsightsConnection);
     const testConnection = useAction(api.actions.telemetry.testAppInsightsConnection);
 

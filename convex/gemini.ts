@@ -2,6 +2,8 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
+import { decrypt } from "./lib/crypto";
+import { getD365AccessToken } from "./lib/tokenHelper";
 // Use require to avoid circular type dependency
 const { api } = require("./_generated/api") as any;
 
@@ -40,7 +42,7 @@ export const analyzeFlow = action({
 
         if (!clientData) {
             const sanitizedUrl = tenant.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-            const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+            const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
             // 2. Fetch Flow Definition (Client Data)
             const url = `https://${sanitizedUrl}/api/data/v9.2/workflows(${args.flowId})?$select=clientdata,name,description`;
@@ -335,26 +337,3 @@ If certain modules have no data (count is 0), note that data needs to be synced 
     },
 });
 
-// Helper - duplicated from actions.ts to keep this file self-contained for now
-// In a real refactor, we'd move this to a shared lib.
-async function getAccessToken(resource: string, publicClientId: string, clientSecret: string, tenantDirectoryId?: string): Promise<string> {
-    const authorityHostUrl = "https://login.microsoftonline.com";
-    const tenant = tenantDirectoryId || "common";
-    const authorityUrl = `${authorityHostUrl}/${tenant}/oauth2/v2.0/token`;
-
-    const body = new URLSearchParams();
-    body.append("scope", `https://${resource}/.default`);
-    body.append("client_id", publicClientId);
-    body.append("client_secret", clientSecret);
-    body.append("grant_type", "client_credentials");
-
-    const response = await fetch(authorityUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-    });
-
-    const data = await response.json();
-    if (data.error) throw new Error(data.error_description);
-    return data.access_token;
-}

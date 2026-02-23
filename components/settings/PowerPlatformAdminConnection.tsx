@@ -20,7 +20,7 @@ export default function PowerPlatformAdminConnection({ isOpen, onClose, tenantId
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [testing, setTesting] = useState(false);
 
-    const saveConnection = useMutation(api.mutations.savePPAdminConnection);
+    const saveConnection = useAction(api.actions.credentials.savePPAdminConnection);
     const deleteConnection = useMutation(api.mutations.deletePPAdminConnection);
     const testConnection = useAction(api.actions.storage.testPPAdminConnection);
 

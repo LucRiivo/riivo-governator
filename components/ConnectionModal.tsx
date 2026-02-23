@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { X, Lock, Globe, Key } from 'lucide-react';
-import { useMutation } from 'convex/react';
+import { useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
 interface ConnectionModalProps {
@@ -11,7 +11,7 @@ interface ConnectionModalProps {
 }
 
 export default function ConnectionModal({ isOpen, onClose, orgId }: ConnectionModalProps) {
-    const addTenant = useMutation(api.mutations.addTenant);
+    const addTenant = useAction(api.actions.credentials.addTenant);
     const [name, setName] = useState('');
     const [url, setUrl] = useState('');
     const [clientId, setClientId] = useState('');

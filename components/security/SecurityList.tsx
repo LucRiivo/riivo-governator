@@ -26,7 +26,6 @@ interface SecurityListProps {
 function TeamTypeBadge({ teamType }: { teamType: number }) {
     const config: Record<number, { label: string; className: string }> = {
         0: { label: "Owner", className: "bg-indigo-50 text-indigo-600 border-indigo-100" },
-        1: { label: "Access", className: "bg-amber-50 text-amber-600 border-amber-100" },
         2: { label: "AAD Security", className: "bg-emerald-50 text-emerald-600 border-emerald-100" },
         3: { label: "AAD Office", className: "bg-sky-50 text-sky-600 border-sky-100" },
     };

@@ -2,43 +2,12 @@
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
+import { decrypt } from "../lib/crypto";
+import { getD365AccessToken, getPPAdminToken, type PPAdminConnection } from "../lib/tokenHelper";
 const { api } = require("../_generated/api") as any;
 
 const PP_ADMIN_BASE = "https://api.bap.microsoft.com";
 const PP_API_VERSION = "2021-04-01";
-
-interface PPAdminConnection {
-    ppTenantId: string;
-    clientId: string;
-    clientSecret: string;
-    tenantId: string;
-}
-
-async function getPPAdminToken(connection: PPAdminConnection): Promise<string> {
-    const tokenUrl = `https://login.microsoftonline.com/${connection.ppTenantId}/oauth2/v2.0/token`;
-
-    const body = new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: connection.clientId,
-        client_secret: connection.clientSecret,
-        scope: "https://api.bap.microsoft.com/.default",
-    });
-
-    const response = await fetch(tokenUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString(),
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[storage] Token error ${response.status}: ${errorText}`);
-        throw new Error(`Failed to acquire Power Platform Admin token: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.access_token;
-}
 
 async function resolvePPAdminConnection(
     ctx: any,
@@ -49,38 +18,6 @@ async function resolvePPAdminConnection(
         throw new Error("No Power Platform Admin connection configured for this tenant. Go to Settings > PP Admin API to connect.");
     }
     return connection;
-}
-
-async function getD365AccessToken(
-    resource: string,
-    clientId: string,
-    clientSecret: string,
-    tenantDirectoryId?: string
-): Promise<string> {
-    const authorityHostUrl = "https://login.microsoftonline.com";
-    const tenant = tenantDirectoryId || "common";
-    const authorityUrl = `${authorityHostUrl}/${tenant}/oauth2/v2.0/token`;
-
-    const body = new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        client_secret: clientSecret,
-        scope: `${resource}/.default`,
-    });
-
-    const response = await fetch(authorityUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString(),
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`D365 token error: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
-    return data.access_token;
 }
 
 // Test the Power Platform Admin API connection
@@ -129,7 +66,7 @@ export const fetchEnvironmentStorage = action({
     handler: async (ctx, args) => {
         console.log(`[storage] Fetching environment storage for tenant: ${args.tenantId}`);
         const conn = await resolvePPAdminConnection(ctx, args.tenantId);
-        const token = await getPPAdminToken(conn);
+        const token = await getPPAdminToken({ ...conn, clientSecret: decrypt(conn.clientSecret) });
 
         // List all environments
         const envUrl = `${PP_ADMIN_BASE}/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments?api-version=${PP_API_VERSION}`;
@@ -205,7 +142,7 @@ export const fetchTableBreakdown = action({
         const token = await getD365AccessToken(
             tenant.url,
             tenant.clientId,
-            tenant.clientSecret,
+            decrypt(tenant.clientSecret),
             tenant.tenantDirectoryId
         );
 

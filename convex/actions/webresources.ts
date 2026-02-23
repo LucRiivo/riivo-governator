@@ -2,36 +2,9 @@
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
+import { decrypt } from "../lib/crypto";
+import { getD365AccessToken, resolveTenant } from "../lib/tokenHelper";
 const { api } = require("../_generated/api") as any;
-
-async function getAccessToken(resource: string, clientId: string, clientSecret: string, tenantDirectoryId?: string): Promise<string> {
-    const authorityHostUrl = "https://login.microsoftonline.com";
-    const tenant = tenantDirectoryId || "common";
-    const authorityUrl = `${authorityHostUrl}/${tenant}/oauth2/v2.0/token`;
-
-    const body = new URLSearchParams();
-    body.append("scope", `https://${resource}/.default`);
-    body.append("client_id", clientId);
-    body.append("client_secret", clientSecret);
-    body.append("grant_type", "client_credentials");
-
-    const response = await fetch(authorityUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-    });
-
-    const data = await response.json();
-    if (data.error) throw new Error(data.error_description);
-    return data.access_token;
-}
-
-function resolveTenant(tenants: any[], tenantId: string) {
-    const tenant = tenants.find((t: any) => t.tenantId === tenantId);
-    if (!tenant) throw new Error("Tenant not found");
-    const sanitizedUrl = tenant.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    return { tenant, sanitizedUrl };
-}
 
 const WEB_RESOURCE_TYPE_LABELS: Record<number, string> = {
     1: "HTML", 2: "CSS", 3: "JScript", 4: "XML", 5: "PNG",
@@ -43,7 +16,7 @@ export const listWebResources = action({
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
         const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         // Fetch only custom (unmanaged) web resources to avoid pulling thousands of system resources
         const url = `https://${sanitizedUrl}/api/data/v9.2/webresourceset?$select=name,displayname,webresourcetype,description,ismanaged,modifiedon&$filter=ismanaged eq false&$orderby=name asc`;
@@ -97,7 +70,7 @@ export const getWebResourceContent = action({
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
         const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         const url = `https://${sanitizedUrl}/api/data/v9.2/webresourceset(${args.webResourceId})?$select=content,name,webresourcetype`;
 

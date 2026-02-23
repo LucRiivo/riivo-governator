@@ -2,43 +2,16 @@
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
+import { decrypt } from "../lib/crypto";
+import { getD365AccessToken, resolveTenant } from "../lib/tokenHelper";
 const { api } = require("../_generated/api") as any;
-
-async function getAccessToken(resource: string, clientId: string, clientSecret: string, tenantDirectoryId?: string): Promise<string> {
-    const authorityHostUrl = "https://login.microsoftonline.com";
-    const tenant = tenantDirectoryId || "common";
-    const authorityUrl = `${authorityHostUrl}/${tenant}/oauth2/v2.0/token`;
-
-    const body = new URLSearchParams();
-    body.append("scope", `https://${resource}/.default`);
-    body.append("client_id", clientId);
-    body.append("client_secret", clientSecret);
-    body.append("grant_type", "client_credentials");
-
-    const response = await fetch(authorityUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-    });
-
-    const data = await response.json();
-    if (data.error) throw new Error(data.error_description);
-    return data.access_token;
-}
-
-function resolveTenant(tenants: any[], tenantId: string) {
-    const tenant = tenants.find((t: any) => t.tenantId === tenantId);
-    if (!tenant) throw new Error("Tenant not found");
-    const sanitizedUrl = tenant.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    return { tenant, sanitizedUrl };
-}
 
 export const listBusinessUnits = action({
     args: { tenantId: v.string(), orgId: v.optional(v.string()) },
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
         const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         const url = `https://${sanitizedUrl}/api/data/v9.2/businessunits?$select=name,businessunitid,_parentbusinessunitid_value,isdisabled&$orderby=name asc`;
 
@@ -77,7 +50,7 @@ export const listSecurityRoles = action({
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
         const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         const url = `https://${sanitizedUrl}/api/data/v9.2/roles?$select=name,roleid,_businessunitid_value,ismanaged,iscustomizable&$filter=ismanaged eq false&$orderby=name asc`;
 
@@ -117,10 +90,9 @@ export const listSecurityTeams = action({
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
         const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
-        // Fetch teams with their associated roles expanded
-        const url = `https://${sanitizedUrl}/api/data/v9.2/teams?$select=name,teamid,teamtype,_businessunitid_value,isdefault&$expand=teamroles_association($select=name,roleid)&$orderby=name asc`;
+        const url = `https://${sanitizedUrl}/api/data/v9.2/teams?$select=name,teamid,teamtype,_businessunitid_value,isdefault&$filter=teamtype ne 1&$expand=teamroles_association($select=name,roleid)&$orderby=name asc`;
 
         console.log(`[listSecurityTeams] Fetching from: ${url}`);
 
@@ -154,6 +126,38 @@ export const listSecurityTeams = action({
         });
 
         return mapped;
+    },
+});
+
+export const getTeamMembers = action({
+    args: { tenantId: v.string(), teamId: v.string(), orgId: v.optional(v.string()) },
+    handler: async (ctx, args) => {
+        const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
+        const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
+
+        const url = `https://${sanitizedUrl}/api/data/v9.2/teams(${args.teamId})/teammembership_association?$select=fullname,systemuserid,internalemailaddress,isdisabled&$orderby=fullname asc`;
+
+        console.log(`[getTeamMembers] Fetching from: ${url}`);
+
+        const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[getTeamMembers] Error ${response.status}: ${errorText}`);
+            throw new Error(`Failed to fetch team members: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        return data.value.map((user: any) => ({
+            systemUserId: user.systemuserid,
+            fullName: user.fullname || "Unknown",
+            email: user.internalemailaddress || "",
+            isDisabled: user.isdisabled ?? false,
+        }));
     },
 });
 

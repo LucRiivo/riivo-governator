@@ -1,5 +1,5 @@
 import { useAction, useQuery } from "convex/react";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { api } from "@/convex/_generated/api";
 import {
     Building2,
@@ -19,6 +19,9 @@ import {
     Globe,
     ShieldAlert,
     BarChart3,
+    Mail,
+    User,
+    Download,
 } from 'lucide-react';
 import { Tenant } from '../Sidebar';
 
@@ -88,9 +91,18 @@ export default function SecurityAnalysisView({
     securityTeams = [],
 }: SecurityAnalysisViewProps) {
     const analyzeSecurityOverview = useAction(api.actions.securityAudit.analyzeSecurityOverview);
+    const getTeamMembers = useAction(api.actions.security.getTeamMembers);
 
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<any>(null);
+    const [teamMembers, setTeamMembers] = useState<any[] | null>(null);
+    const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+    const [membersError, setMembersError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setTeamMembers(null);
+        setMembersError(null);
+    }, [selectedItem?.teamId]);
 
     // Fetch cached audit
     const cachedAudit = useQuery(
@@ -138,6 +150,25 @@ export default function SecurityAnalysisView({
         }
     };
 
+    const handleFetchMembers = async () => {
+        if (!activeTenant?.tenantId || !selectedItem?.teamId) return;
+        setIsLoadingMembers(true);
+        setMembersError(null);
+        try {
+            const members = await getTeamMembers({
+                tenantId: activeTenant.tenantId,
+                teamId: selectedItem.teamId,
+                orgId,
+            });
+            setTeamMembers(members);
+        } catch (error) {
+            console.error("Failed to fetch team members:", error);
+            setMembersError(error instanceof Error ? error.message : "Failed to fetch team members");
+        } finally {
+            setIsLoadingMembers(false);
+        }
+    };
+
     // BU detail
     const getBUChildren = (buId: string) => businessUnits.filter(bu => bu.parentBusinessUnitId === buId);
     const getBURoles = (buId: string) => securityRoles.filter(r => r.businessUnitId === buId);
@@ -147,7 +178,6 @@ export default function SecurityAnalysisView({
     const getTeamTypeLabel = (type: number) => {
         switch (type) {
             case 0: return "Owner Team";
-            case 1: return "Access Team";
             case 2: return "AAD Security Group";
             case 3: return "AAD Office Group";
             default: return `Type ${type}`;
@@ -580,6 +610,91 @@ export default function SecurityAnalysisView({
                             </div>
                         </div>
                     )}
+
+                    {/* Team Members */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Users size={16} className="text-indigo-600" />
+                                    <span className="font-semibold text-slate-800">Team Members</span>
+                                    {teamMembers && (
+                                        <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{teamMembers.length}</span>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={handleFetchMembers}
+                                    disabled={isLoadingMembers}
+                                    className="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors font-medium flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                    {isLoadingMembers ? (
+                                        <RefreshCw size={12} className="animate-spin" />
+                                    ) : (
+                                        <Download size={12} />
+                                    )}
+                                    {isLoadingMembers ? 'Loading...' : (teamMembers ? 'Refresh' : 'Load Members')}
+                                </button>
+                            </div>
+
+                            {membersError && (
+                                <div className="px-4 py-3 bg-rose-50 border-b border-rose-100 flex items-center gap-2">
+                                    <XCircle size={14} className="text-rose-500" />
+                                    <span className="text-xs text-rose-600 font-medium">{membersError}</span>
+                                </div>
+                            )}
+
+                            {!teamMembers && !isLoadingMembers && !membersError && (
+                                <div className="p-8 text-center">
+                                    <div className="bg-slate-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <Users size={20} className="text-slate-300" />
+                                    </div>
+                                    <p className="text-xs text-slate-400">Click <span className="font-semibold">Load Members</span> to fetch users in this team from Dynamics 365.</p>
+                                </div>
+                            )}
+
+                            {isLoadingMembers && !teamMembers && (
+                                <div className="p-8 text-center">
+                                    <RefreshCw size={20} className="text-indigo-400 animate-spin mx-auto mb-3" />
+                                    <p className="text-xs text-slate-400">Fetching team members...</p>
+                                </div>
+                            )}
+
+                            {teamMembers && teamMembers.length === 0 && (
+                                <div className="p-8 text-center">
+                                    <div className="bg-amber-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <Users size={20} className="text-amber-300" />
+                                    </div>
+                                    <p className="text-xs text-slate-500 font-medium">No members in this team</p>
+                                </div>
+                            )}
+
+                            {teamMembers && teamMembers.length > 0 && (
+                                <div className="divide-y divide-slate-50 max-h-80 overflow-y-auto">
+                                    {teamMembers.map((member: any) => (
+                                        <div key={member.systemUserId} className="px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${member.isDisabled ? 'bg-slate-100 text-slate-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                    {member.fullName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className={`text-sm font-medium ${member.isDisabled ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                                                        {member.fullName}
+                                                    </p>
+                                                    {member.email && (
+                                                        <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                                                            <Mail size={10} />
+                                                            {member.email}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {member.isDisabled && (
+                                                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">Disabled</span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                 </div>
             )}
         </div>

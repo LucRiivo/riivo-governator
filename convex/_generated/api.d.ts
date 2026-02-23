@@ -11,6 +11,7 @@
 import type * as actions from "../actions.js";
 import type * as actions_appLandscapeAudit from "../actions/appLandscapeAudit.js";
 import type * as actions_apps from "../actions/apps.js";
+import type * as actions_credentials from "../actions/credentials.js";
 import type * as actions_documentation from "../actions/documentation.js";
 import type * as actions_security from "../actions/security.js";
 import type * as actions_securityAudit from "../actions/securityAudit.js";
@@ -21,7 +22,9 @@ import type * as actions_webResourceAudit from "../actions/webResourceAudit.js";
 import type * as actions_webresources from "../actions/webresources.js";
 import type * as documentation from "../documentation.js";
 import type * as gemini from "../gemini.js";
+import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_markdownToStorage from "../lib/markdownToStorage.js";
+import type * as lib_tokenHelper from "../lib/tokenHelper.js";
 import type * as mutations from "../mutations.js";
 import type * as queries from "../queries.js";
 import type * as seed from "../seed.js";
@@ -37,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   actions: typeof actions;
   "actions/appLandscapeAudit": typeof actions_appLandscapeAudit;
   "actions/apps": typeof actions_apps;
+  "actions/credentials": typeof actions_credentials;
   "actions/documentation": typeof actions_documentation;
   "actions/security": typeof actions_security;
   "actions/securityAudit": typeof actions_securityAudit;
@@ -47,7 +51,9 @@ declare const fullApi: ApiFromModules<{
   "actions/webresources": typeof actions_webresources;
   documentation: typeof documentation;
   gemini: typeof gemini;
+  "lib/crypto": typeof lib_crypto;
   "lib/markdownToStorage": typeof lib_markdownToStorage;
+  "lib/tokenHelper": typeof lib_tokenHelper;
   mutations: typeof mutations;
   queries: typeof queries;
   seed: typeof seed;

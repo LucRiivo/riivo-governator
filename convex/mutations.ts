@@ -1,7 +1,7 @@
-import { mutation } from "./_generated/server";
+import { mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const addTenant = mutation({
+export const _addTenant = internalMutation({
     args: {
         name: v.string(),
         url: v.string(),
@@ -456,7 +456,7 @@ export const upsertWebResources = mutation({
 });
 
 // Phase 4: App Insights Mutations
-export const saveAppInsightsConnection = mutation({
+export const _saveAppInsightsConnection = internalMutation({
     args: {
         tenantId: v.string(),
         appInsightsAppId: v.string(),
@@ -550,7 +550,7 @@ export const saveWebResourceAuditResult = mutation({
 });
 
 // Phase 5: Power Platform Admin Connection Mutations
-export const savePPAdminConnection = mutation({
+export const _savePPAdminConnection = internalMutation({
     args: {
         tenantId: v.string(),
         ppTenantId: v.string(),
@@ -721,4 +721,26 @@ export const updateAdvisoryStatus = mutation({
     handler: async (ctx, args) => {
         await ctx.db.patch(args.advisoryId, { status: args.status });
     }
+});
+
+// Migration patch mutations (used by migrateEncryptCredentials action)
+export const _patchTenantSecret = internalMutation({
+    args: { id: v.id("tenants"), clientSecret: v.string() },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { clientSecret: args.clientSecret });
+    },
+});
+
+export const _patchPPAdminSecret = internalMutation({
+    args: { id: v.id("pp_admin_connections"), clientSecret: v.string() },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { clientSecret: args.clientSecret });
+    },
+});
+
+export const _patchAppInsightsKey = internalMutation({
+    args: { id: v.id("app_insights_connections"), apiKey: v.string() },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { apiKey: args.apiKey });
+    },
 });

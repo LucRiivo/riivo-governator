@@ -2,43 +2,16 @@
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
+import { decrypt } from "../lib/crypto";
+import { getD365AccessToken, resolveTenant } from "../lib/tokenHelper";
 const { api } = require("../_generated/api") as any;
-
-async function getAccessToken(resource: string, clientId: string, clientSecret: string, tenantDirectoryId?: string): Promise<string> {
-    const authorityHostUrl = "https://login.microsoftonline.com";
-    const tenant = tenantDirectoryId || "common";
-    const authorityUrl = `${authorityHostUrl}/${tenant}/oauth2/v2.0/token`;
-
-    const body = new URLSearchParams();
-    body.append("scope", `https://${resource}/.default`);
-    body.append("client_id", clientId);
-    body.append("client_secret", clientSecret);
-    body.append("grant_type", "client_credentials");
-
-    const response = await fetch(authorityUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-    });
-
-    const data = await response.json();
-    if (data.error) throw new Error(data.error_description);
-    return data.access_token;
-}
-
-function resolveTenant(tenants: any[], tenantId: string) {
-    const tenant = tenants.find((t: any) => t.tenantId === tenantId);
-    if (!tenant) throw new Error("Tenant not found");
-    const sanitizedUrl = tenant.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    return { tenant, sanitizedUrl };
-}
 
 export const listModelDrivenApps = action({
     args: { tenantId: v.string(), orgId: v.optional(v.string()) },
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
         const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         const url = `https://${sanitizedUrl}/api/data/v9.2/appmodules?$select=name,uniquename,appmoduleversion,publishedon,description,clienttype,ismanaged&$orderby=name asc`;
 
@@ -87,7 +60,7 @@ export const listSystemForms = action({
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
         const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         // Only custom forms, main form types (2=Main, 6=Quick View, 7=Quick Create, 5=Mobile, 11=Main Interactive)
         const url = `https://${sanitizedUrl}/api/data/v9.2/systemforms?$select=name,objecttypecode,type,description,ismanaged&$filter=ismanaged eq false and (type eq 2 or type eq 6 or type eq 7)&$orderby=objecttypecode,name asc`;
@@ -138,7 +111,7 @@ export const listSystemViews = action({
     handler: async (ctx, args) => {
         const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
         const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
-        const token = await getAccessToken(sanitizedUrl, tenant.clientId, tenant.clientSecret, tenant.tenantDirectoryId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
 
         // Only custom views, public views (querytype 0) and associated views (querytype 1)
         const url = `https://${sanitizedUrl}/api/data/v9.2/savedqueries?$select=name,returnedtypecode,querytype,ismanaged,isdefault&$filter=ismanaged eq false and (querytype eq 0 or querytype eq 2 or querytype eq 4)&$orderby=returnedtypecode,name asc`;
