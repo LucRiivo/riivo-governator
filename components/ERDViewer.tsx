@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
+// Use require to avoid TS2589 type depth limit with large Convex schema
+const { api } = require('@/convex/_generated/api') as { api: any };
 import {
     GitBranch,
     RefreshCw,
@@ -67,6 +68,7 @@ export default function ERDViewer({ tenantId, appModuleId, appName, orgId }: ERD
         }
 
         try {
+            // @ts-ignore mermaid is loaded dynamically at runtime
             const mermaid = (await import('mermaid')).default;
             mermaid.initialize({
                 startOnLoad: false,
