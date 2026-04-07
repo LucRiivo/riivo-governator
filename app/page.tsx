@@ -100,7 +100,7 @@ export default function Home() {
     setAnalysisResult(null);
   }, [selectedItem]);
 
-  const analyzeFlow = useAction(api.claude.analyzeFlow);
+  const analyzeFlow = useAction(api.gemini.analyzeFlow);
 
   const handleStartAnalysis = async () => {
     if (!selectedItem || !activeTenantId) return;

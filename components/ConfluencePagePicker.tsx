@@ -29,7 +29,8 @@ export default function ConfluencePagePicker({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const searchPages = useAction((api as any).actions.confluence.searchConfluencePages);
+    // @ts-expect-error Convex type depth limit with expanded schema
+    const searchPages = useAction(api.actions.confluence.searchConfluencePages);
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);

@@ -330,7 +330,7 @@ export default function EnvironmentDashboard({ activeTenant, orgId, onNavigate }
         tenantId ? { tenantId } : "skip"
     ) || [];
 
-    const assessHealth = useAction(api.claude.assessEnvironmentHealth);
+    const assessHealth = useAction(api.gemini.assessEnvironmentHealth);
     const updateAdvisoryStatus = useMutation(api.mutations.updateAdvisoryStatus);
 
     const handleAssess = async () => {
