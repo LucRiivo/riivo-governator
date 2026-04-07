@@ -61,6 +61,7 @@ export default function WebResourceList({
     orgId,
     searchQuery = ''
 }: WebResourceListProps) {
+    // @ts-ignore TS2589 type depth limit with large Convex schema
     const listWebResources = useAction(api.actions.webresources.listWebResources);
     const cachedResources = useQuery(api.queries.getWebResources, activeTenantId ? { tenantId: activeTenantId } : "skip");
 

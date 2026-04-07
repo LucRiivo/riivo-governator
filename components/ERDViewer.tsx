@@ -30,6 +30,7 @@ interface ERDViewerProps {
 }
 
 export default function ERDViewer({ tenantId, appModuleId, appName, orgId }: ERDViewerProps) {
+    // @ts-ignore TS2589 type depth limit with large Convex schema
     const erdDiagram = useQuery(api.queries.getErdDiagram, { tenantId, appModuleId });
     const generateErd = useAction(api.actions.erd.generateErd);
     const publishErd = useAction(api.actions.erd.publishErdToConfluence);
@@ -68,7 +69,6 @@ export default function ERDViewer({ tenantId, appModuleId, appName, orgId }: ERD
         }
 
         try {
-            // @ts-ignore mermaid is loaded dynamically at runtime
             const mermaid = (await import('mermaid')).default;
             mermaid.initialize({
                 startOnLoad: false,
