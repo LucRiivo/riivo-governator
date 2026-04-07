@@ -1,11 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+// Use require to avoid TS2589 type depth limit with large Convex schema
+const { api } = require('@/convex/_generated/api') as { api: any };
 import { FileText, Save, Send, RefreshCw, Globe, Loader2, Settings } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ConfluencePagePicker, { ConfluencePageSelection } from './ConfluencePagePicker';
+
+const markdownComponents = {
+    table: ({ children, ...props }: any) => (
+        <div className="my-4 overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
+            <table className="w-full border-collapse text-sm" {...props}>{children}</table>
+        </div>
+    ),
+    thead: ({ children, ...props }: any) => (
+        <thead className="bg-slate-800 text-white" {...props}>{children}</thead>
+    ),
+    th: ({ children, ...props }: any) => (
+        <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider border-b border-slate-600" {...props}>{children}</th>
+    ),
+    tbody: ({ children, ...props }: any) => (
+        <tbody className="divide-y divide-slate-100" {...props}>{children}</tbody>
+    ),
+    tr: ({ children, ...props }: any) => (
+        <tr className="even:bg-slate-50/80 hover:bg-indigo-50/50 transition-colors" {...props}>{children}</tr>
+    ),
+    td: ({ children, ...props }: any) => (
+        <td className="px-4 py-2.5 text-slate-700 border-b border-slate-100" {...props}>{children}</td>
+    ),
+    blockquote: ({ children, ...props }: any) => {
+        const text = String(children);
+        const isWarning = text.includes('[!WARNING]');
+        const isInfo = text.includes('[!INFO]');
+        const isSuccess = text.includes('[!SUCCESS]');
+        const isError = text.includes('[!ERROR]');
+        const bgColor = isError ? 'bg-rose-50 border-rose-300 text-rose-800'
+            : isWarning ? 'bg-amber-50 border-amber-300 text-amber-800'
+            : isSuccess ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+            : isInfo ? 'bg-sky-50 border-sky-300 text-sky-800'
+            : 'bg-slate-50 border-slate-300 text-slate-700';
+        return <blockquote className={`my-3 p-4 rounded-lg border-l-4 ${bgColor} not-italic`} {...props}>{children}</blockquote>;
+    },
+};
 
 type DocType = 'security' | 'app' | 'webresource';
 
@@ -375,7 +412,7 @@ export default function EntityDocumentationEditor({
                     />
                 ) : (
                     <div className="w-full h-full p-8 overflow-y-auto prose prose-slate prose-sm max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content}</ReactMarkdown>
                     </div>
                 )}
             </div>
