@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "D365 Debugger",
+  title: "Governator",
   description: "Debugging tool for D365 solutions",
 };
 

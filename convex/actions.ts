@@ -55,6 +55,62 @@ export const listFlows = action({
     },
 });
 
+export const bulkFetchFlowDefinitions = action({
+    args: { tenantId: v.string(), orgId: v.optional(v.string()) },
+    handler: async (ctx, args) => {
+        const tenants = await ctx.runQuery(api.queries.getTenants, { orgId: args.orgId });
+        const { tenant, sanitizedUrl } = resolveTenant(tenants, args.tenantId);
+        const token = await getD365AccessToken(sanitizedUrl, tenant.clientId, decrypt(tenant.clientSecret), tenant.tenantDirectoryId);
+
+        // Get all flows missing clientData
+        const allFlows = await ctx.runQuery(api.queries.getFlows, { tenantId: args.tenantId });
+        const flowsMissingData = allFlows.filter((f: any) => !f.clientData);
+
+        console.log(`[bulkFetchFlowDefinitions] ${flowsMissingData.length} flows missing clientData`);
+
+        const BATCH_SIZE = 5;
+        const BATCH_DELAY_MS = 1000;
+        let fetched = 0;
+        let failed = 0;
+
+        for (let i = 0; i < flowsMissingData.length; i += BATCH_SIZE) {
+            const batch = flowsMissingData.slice(i, i + BATCH_SIZE);
+
+            const results = await Promise.allSettled(
+                batch.map(async (flow: any) => {
+                    const url = `https://${sanitizedUrl}/api/data/v9.2/workflows(${flow.workflowId})?$select=clientdata,name`;
+                    const response = await fetch(url, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (!response.ok) {
+                        throw new Error(`D365 API ${response.status}`);
+                    }
+                    const data = await response.json();
+                    if (data.clientdata) {
+                        await ctx.runMutation(api.mutations.updateFlowClientData, {
+                            flowId: flow._id,
+                            clientData: data.clientdata,
+                        });
+                    }
+                    return true;
+                })
+            );
+
+            for (const r of results) {
+                if (r.status === "fulfilled") fetched++;
+                else failed++;
+            }
+
+            if (i + BATCH_SIZE < flowsMissingData.length) {
+                await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
+            }
+        }
+
+        console.log(`[bulkFetchFlowDefinitions] Fetched: ${fetched}, Failed: ${failed}`);
+        return { fetched, failed, total: flowsMissingData.length };
+    },
+});
+
 export const getFlowDefinition = action({
     args: { tenantId: v.string(), flowId: v.string(), orgId: v.optional(v.string()) },
     handler: async (ctx, args) => {

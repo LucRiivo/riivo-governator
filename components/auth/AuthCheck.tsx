@@ -24,7 +24,7 @@ export default function AuthCheck({ children }: { children: ReactNode }) {
         // Should be handled by middleware, but double check
         return (
             <div className="flex flex-col items-center justify-center h-screen gap-4">
-                <h1 className="text-2xl font-bold">Welcome to D365 Debugger</h1>
+                <h1 className="text-2xl font-bold">Welcome to Governator</h1>
                 <p>Please sign in to continue</p>
                 <div className="p-4 bg-white rounded shadow">
                     <UserButton /> {/* Fallback if no redirect happened */}
@@ -56,7 +56,7 @@ export default function AuthCheck({ children }: { children: ReactNode }) {
         <div className="flex flex-col h-screen">
             <header className="flex items-center justify-between p-4 border-b bg-white shadow-sm z-10">
                 <div className="flex items-center gap-4">
-                    <h1 className="text-xl font-bold">D365 Debugger</h1>
+                    <h1 className="text-xl font-bold">Governator</h1>
                     <OrganizationSwitcher />
                 </div>
                 <div className="flex items-center gap-4">

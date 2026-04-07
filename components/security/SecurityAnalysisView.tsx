@@ -24,6 +24,7 @@ import {
     Download,
 } from 'lucide-react';
 import { Tenant } from '../Sidebar';
+import EntityDocumentationEditor from '../EntityDocumentationEditor';
 
 interface SecurityAnalysisViewProps {
     selectedItem: any;
@@ -98,6 +99,7 @@ export default function SecurityAnalysisView({
     const [teamMembers, setTeamMembers] = useState<any[] | null>(null);
     const [isLoadingMembers, setIsLoadingMembers] = useState(false);
     const [membersError, setMembersError] = useState<string | null>(null);
+    const [overviewTab, setOverviewTab] = useState<'audit' | 'docs'>('audit');
 
     useEffect(() => {
         setTeamMembers(null);
@@ -141,7 +143,7 @@ export default function SecurityAnalysisView({
                     category: "System",
                     title: "Audit Error",
                     description: error instanceof Error ? error.message : "Unknown error",
-                    suggestion: "Ensure security data is synced and Gemini API key is configured."
+                    suggestion: "Ensure security data is synced and Claude API key is configured."
                 }],
                 stats: {}
             });
@@ -203,17 +205,50 @@ export default function SecurityAnalysisView({
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={handleRunAudit}
-                        disabled={isAnalyzing || !hasData}
-                        className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
-                    >
-                        {isAnalyzing ? <RefreshCw className="animate-spin" size={18} /> : <Zap size={18} fill="currentColor" />}
-                        {isAnalyzing ? 'Analyzing...' : (displayResult ? 'Re-run Audit' : 'Run Security Audit')}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="flex bg-slate-100 p-1 rounded-xl">
+                            <button
+                                onClick={() => setOverviewTab('audit')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${overviewTab === 'audit'
+                                    ? 'bg-white text-slate-800 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                Audit
+                            </button>
+                            <button
+                                onClick={() => setOverviewTab('docs')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${overviewTab === 'docs'
+                                    ? 'bg-white text-slate-800 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                Documentation
+                            </button>
+                        </div>
+                        {overviewTab === 'audit' && (
+                            <button
+                                onClick={handleRunAudit}
+                                disabled={isAnalyzing || !hasData}
+                                className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+                            >
+                                {isAnalyzing ? <RefreshCw className="animate-spin" size={18} /> : <Zap size={18} fill="currentColor" />}
+                                {isAnalyzing ? 'Analyzing...' : (displayResult ? 'Re-run Audit' : 'Run Security Audit')}
+                            </button>
+                        )}
+                    </div>
                 </div>
 
-                {!hasData && (
+                {overviewTab === 'docs' && activeTenant?.tenantId && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <EntityDocumentationEditor
+                            docType="security"
+                            tenantId={activeTenant.tenantId}
+                        />
+                    </div>
+                )}
+
+                {overviewTab === 'audit' && !hasData && (
                     <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
                         <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Shield size={32} className="text-slate-300" />
@@ -224,7 +259,7 @@ export default function SecurityAnalysisView({
                 )}
 
                 {/* Quick Stats */}
-                {hasData && !displayResult && (
+                {overviewTab === 'audit' && hasData && !displayResult && (
                     <div className="grid grid-cols-4 gap-4">
                         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                             <div className="flex items-center gap-2 mb-3">
@@ -262,7 +297,7 @@ export default function SecurityAnalysisView({
                 )}
 
                 {/* Audit Results */}
-                {displayResult && (
+                {overviewTab === 'audit' && displayResult && (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* Overall Score */}
                         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">

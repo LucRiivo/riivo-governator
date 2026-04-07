@@ -1,7 +1,7 @@
 import { useAction, useQuery } from "convex/react";
 import React, { useEffect, useState } from 'react';
 import { api } from "@/convex/_generated/api";
-import { Terminal, Link as LinkIcon, RefreshCw, Layout, Code, CheckCircle } from 'lucide-react';
+import { Terminal, Link as LinkIcon, RefreshCw, Layout, Code, CheckCircle, FileText } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 
 interface ComponentListProps {
@@ -11,9 +11,10 @@ interface ComponentListProps {
     activeTenantId?: string;
     orgId?: string; // Clerk Organization ID
     searchQuery?: string; // Search filter
+    onBulkDocs?: () => void; // Open bulk documentation panel
 }
 
-export default function ComponentList({ selectedTab, selectedItem, setSelectedItem, activeTenantId, orgId, searchQuery = '' }: ComponentListProps) {
+export default function ComponentList({ selectedTab, selectedItem, setSelectedItem, activeTenantId, orgId, searchQuery = '', onBulkDocs }: ComponentListProps) {
     const listFlows = useAction(api.actions.listFlows);
     const listTables = useAction(api.actions.listTables);
 
@@ -84,14 +85,25 @@ export default function ComponentList({ selectedTab, selectedItem, setSelectedIt
                         </p>
                     )}
                 </div>
-                <button
-                    onClick={handleSync}
-                    disabled={isSyncing}
-                    className={`text-slate-400 hover:text-indigo-600 transition-colors p-1 rounded-md hover:bg-slate-100 ${isSyncing ? 'animate-spin text-indigo-600' : ''}`}
-                    title={selectedTab === 'flows' ? "Sync Flows from Dynamics" : "Sync Tables from Dynamics"}
-                >
-                    <RefreshCw size={14} />
-                </button>
+                <div className="flex items-center gap-1">
+                    {selectedTab === 'flows' && onBulkDocs && (
+                        <button
+                            onClick={onBulkDocs}
+                            className="text-slate-400 hover:text-violet-600 transition-colors p-1 rounded-md hover:bg-slate-100"
+                            title="Bulk Generate & Publish Documentation"
+                        >
+                            <FileText size={14} />
+                        </button>
+                    )}
+                    <button
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                        className={`text-slate-400 hover:text-indigo-600 transition-colors p-1 rounded-md hover:bg-slate-100 ${isSyncing ? 'animate-spin text-indigo-600' : ''}`}
+                        title={selectedTab === 'flows' ? "Sync Flows from Dynamics" : "Sync Tables from Dynamics"}
+                    >
+                        <RefreshCw size={14} />
+                    </button>
+                </div>
             </div>
             <div className="divide-y divide-slate-50">
                 {selectedTab === 'flows' && (

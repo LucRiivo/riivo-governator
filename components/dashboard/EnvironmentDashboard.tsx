@@ -125,32 +125,32 @@ function CategoryScoreCard({ category, score, onNavigate }: { category: string; 
 
 function IssuesSummaryBadges({ issues }: { issues: { critical: number; warning: number; info: number } }) {
     return (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2">
             {issues.critical > 0 && (
-                <div className="flex items-center gap-1.5 bg-rose-50 text-rose-700 px-3 py-1.5 rounded-lg border border-rose-200">
-                    <XCircle size={14} />
-                    <span className="text-sm font-semibold">{issues.critical}</span>
-                    <span className="text-xs">Critical</span>
+                <div className="flex items-center gap-1.5 bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg border border-rose-200">
+                    <XCircle size={12} />
+                    <span className="text-xs font-semibold">{issues.critical}</span>
+                    <span className="text-[11px]">Critical</span>
                 </div>
             )}
             {issues.warning > 0 && (
-                <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200">
-                    <AlertTriangle size={14} />
-                    <span className="text-sm font-semibold">{issues.warning}</span>
-                    <span className="text-xs">Warnings</span>
+                <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg border border-amber-200">
+                    <AlertTriangle size={12} />
+                    <span className="text-xs font-semibold">{issues.warning}</span>
+                    <span className="text-[11px]">Warnings</span>
                 </div>
             )}
             {issues.info > 0 && (
-                <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200">
-                    <Info size={14} />
-                    <span className="text-sm font-semibold">{issues.info}</span>
-                    <span className="text-xs">Info</span>
+                <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-200">
+                    <Info size={12} />
+                    <span className="text-xs font-semibold">{issues.info}</span>
+                    <span className="text-[11px]">Info</span>
                 </div>
             )}
             {issues.critical === 0 && issues.warning === 0 && issues.info === 0 && (
-                <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200">
-                    <CheckCircle2 size={14} />
-                    <span className="text-xs font-medium">No issues found</span>
+                <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200">
+                    <CheckCircle2 size={12} />
+                    <span className="text-[11px] font-medium">No issues found</span>
                 </div>
             )}
         </div>
@@ -330,7 +330,7 @@ export default function EnvironmentDashboard({ activeTenant, orgId, onNavigate }
         tenantId ? { tenantId } : "skip"
     ) || [];
 
-    const assessHealth = useAction(api.gemini.assessEnvironmentHealth);
+    const assessHealth = useAction(api.claude.assessEnvironmentHealth);
     const updateAdvisoryStatus = useMutation(api.mutations.updateAdvisoryStatus);
 
     const handleAssess = async () => {

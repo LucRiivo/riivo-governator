@@ -17,6 +17,7 @@ import StorageDashboard from '@/components/storage/StorageDashboard';
 import EnvironmentDashboard from '@/components/dashboard/EnvironmentDashboard';
 import AppInsightsConnection from '@/components/settings/AppInsightsConnection';
 import PowerPlatformAdminConnection from '@/components/settings/PowerPlatformAdminConnection';
+import BulkDocumentationPanel from '@/components/BulkDocumentationPanel';
 import { MOCK_ANALYSIS_RESULT } from '@/lib/mockData';
 
 import { useQuery, useAction } from "convex/react";
@@ -42,6 +43,7 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAppInsightsModalOpen, setIsAppInsightsModalOpen] = useState(false);
   const [isPPAdminModalOpen, setIsPPAdminModalOpen] = useState(false);
+  const [isBulkDocsOpen, setIsBulkDocsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Clerk Organization
@@ -98,7 +100,7 @@ export default function Home() {
     setAnalysisResult(null);
   }, [selectedItem]);
 
-  const analyzeFlow = useAction(api.gemini.analyzeFlow);
+  const analyzeFlow = useAction(api.claude.analyzeFlow);
 
   const handleStartAnalysis = async () => {
     if (!selectedItem || !activeTenantId) return;
@@ -220,6 +222,7 @@ export default function Home() {
                   activeTenantId={activeTenant?.tenantId}
                   orgId={orgId}
                   searchQuery={searchQuery}
+                  onBulkDocs={() => setIsBulkDocsOpen(true)}
                 />
               )}
 
@@ -283,6 +286,15 @@ export default function Home() {
         tenantId={activeTenant?.tenantId}
         orgId={orgId}
       />
+
+      {activeTenant?.tenantId && (
+        <BulkDocumentationPanel
+          isOpen={isBulkDocsOpen}
+          onClose={() => setIsBulkDocsOpen(false)}
+          tenantId={activeTenant.tenantId}
+          orgId={orgId}
+        />
+      )}
     </div>
   );
 }

@@ -16,8 +16,11 @@ import {
     Table,
     BarChart3,
     ShieldAlert,
+    GitBranch,
 } from 'lucide-react';
 import { Tenant } from '../Sidebar';
+import ERDViewer from '../ERDViewer';
+import EntityDocumentationEditor from '../EntityDocumentationEditor';
 
 interface AppDetailViewProps {
     selectedItem: any;
@@ -85,6 +88,7 @@ export default function AppDetailView({ selectedItem, activeTenant, orgId }: App
     const [auditResult, setAuditResult] = useState<any>(null);
     const [isAnalyzingApp, setIsAnalyzingApp] = useState(false);
     const [appAuditResult, setAppAuditResult] = useState<any>(null);
+    const [detailTab, setDetailTab] = useState<'audit' | 'erd' | 'docs'>('audit');
 
     const displayAudit = useMemo(() => {
         if (auditResult) return auditResult;
@@ -104,9 +108,10 @@ export default function AppDetailView({ selectedItem, activeTenant, orgId }: App
         return null;
     }, [appAuditResult, cachedAppAudit]);
 
-    // Reset per-app audit result when selected item changes
+    // Reset per-app audit result and tab when selected item changes
     React.useEffect(() => {
         setAppAuditResult(null);
+        setDetailTab('audit');
     }, [selectedItem?._id]);
 
     const handleRunAudit = async () => {
@@ -341,6 +346,56 @@ export default function AppDetailView({ selectedItem, activeTenant, orgId }: App
                 </div>
             </div>
 
+            {/* Detail Tab Toggle */}
+            <div className="flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+                <button
+                    onClick={() => setDetailTab('audit')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${detailTab === 'audit' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                >
+                    <Zap size={14} />
+                    Audit & Details
+                </button>
+                <button
+                    onClick={() => setDetailTab('erd')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${detailTab === 'erd' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                >
+                    <GitBranch size={14} />
+                    ERD Diagram
+                </button>
+                <button
+                    onClick={() => setDetailTab('docs')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${detailTab === 'docs' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                >
+                    <FileText size={14} />
+                    Documentation
+                </button>
+            </div>
+
+            {/* ERD Tab */}
+            {detailTab === 'erd' && activeTenant?.tenantId && (
+                <ERDViewer
+                    tenantId={activeTenant.tenantId}
+                    appModuleId={selectedItem.appModuleId}
+                    appName={selectedItem.name}
+                    orgId={orgId}
+                />
+            )}
+
+            {/* Documentation Tab */}
+            {detailTab === 'docs' && activeTenant?.tenantId && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <EntityDocumentationEditor
+                        docType="app"
+                        tenantId={activeTenant.tenantId}
+                        appId={selectedItem._id}
+                        appName={selectedItem.name}
+                    />
+                </div>
+            )}
+
+            {/* Audit Tab Content */}
+            {detailTab === 'audit' && <>
+
             {/* App Properties */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm min-w-0">
@@ -463,6 +518,8 @@ export default function AppDetailView({ selectedItem, activeTenant, orgId }: App
                     </div>
                 </div>
             )}
+
+            </>}
         </div>
     );
 }

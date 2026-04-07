@@ -7,9 +7,9 @@ const { api } = require("../_generated/api") as any;
 const FORM_TYPE_LABELS: Record<number, string> = { 2: "Main", 5: "Mobile", 6: "Quick View", 7: "Quick Create", 11: "Main Interactive" };
 const CLIENT_TYPE_LABELS: Record<number, string> = { 4: "Web", 5: "Unified Interface" };
 
-async function callGemini(prompt: string): Promise<{ text: string; model: string }> {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY is not defined.");
+async function callClaude(prompt: string): Promise<{ text: string; model: string }> {
+    const apiKey = process.env.CLAUDE_API_KEY;
+    if (!apiKey) throw new Error("CLAUDE_API_KEY is not defined.");
 
     const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
     const modelsResponse = await fetch(modelsUrl);
@@ -19,13 +19,13 @@ async function callGemini(prompt: string): Promise<{ text: string; model: string
     const contentModels = (modelsData.models || []).filter((m: any) =>
         m.supportedGenerationMethods?.includes("generateContent")
     ).sort((a: any, b: any) => {
-        const s = (n: string) => n.includes("gemini-1.5-flash") ? 10 : n.includes("gemini-1.5-pro") ? 8 : n.includes("flash") ? 3 : 1;
+        const s = (n: string) => n.includes("claude-1.5-flash") ? 10 : n.includes("claude-1.5-pro") ? 8 : n.includes("flash") ? 3 : 1;
         return s(b.name) - s(a.name);
     });
 
-    if (contentModels.length === 0) throw new Error("No Gemini models available.");
+    if (contentModels.length === 0) throw new Error("No Claude models available.");
 
-    let geminiResponse = null;
+    let claudeResponse = null;
     let lastError = null;
     let successfulModel = "";
 
@@ -40,16 +40,16 @@ async function callGemini(prompt: string): Promise<{ text: string; model: string
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 }
             );
-            if (response.ok) { geminiResponse = response; successfulModel = modelName; break; }
+            if (response.ok) { claudeResponse = response; successfulModel = modelName; break; }
             else { lastError = new Error(`${modelName}: ${response.status}`); }
         } catch (e) { lastError = e instanceof Error ? e : new Error(String(e)); }
     }
 
-    if (!geminiResponse) throw lastError || new Error("All models failed.");
+    if (!claudeResponse) throw lastError || new Error("All models failed.");
 
-    const geminiData = await geminiResponse.json();
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("Gemini returned no content.");
+    const claudeData = await claudeResponse.json();
+    const text = claudeData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("Claude returned no content.");
 
     return { text, model: successfulModel };
 }
@@ -170,7 +170,7 @@ Provide the output in the following JSON format ONLY (no markdown code blocks):
 Scores 0-100: 90-100 Excellent, 70-89 Good, 50-69 Fair, 0-49 Poor.
 `;
 
-        const { text: rawText, model: successfulModel } = await callGemini(prompt);
+        const { text: rawText, model: successfulModel } = await callClaude(prompt);
 
         const cleanedText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
         const result = JSON.parse(cleanedText);
@@ -309,7 +309,7 @@ Provide the output in the following JSON format ONLY (no markdown code blocks):
 Scores 0-100: 90-100 Excellent, 70-89 Good, 50-69 Fair, 0-49 Poor.
 `;
 
-        const { text: rawText, model: successfulModel } = await callGemini(prompt);
+        const { text: rawText, model: successfulModel } = await callClaude(prompt);
 
         const cleanedText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
         const result = JSON.parse(cleanedText);

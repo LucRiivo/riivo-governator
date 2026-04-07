@@ -76,9 +76,9 @@ export const analyzeFlow = action({
         }
 
 
-        // 3. Construct Gemini Prompt
+        // 3. Construct Claude Prompt
         // We trim the clientData to avoid hitting token limits if it's huge, 
-        // though Gemini 1.5/2.0 has large context. 
+        // though Claude 1.5/2.0 has large context. 
         // For now, let's send the structure.
         const prompt = `
 You are an expert Power Automate Logic Auditor.
@@ -106,10 +106,10 @@ Provide the output in the following JSON format ONLY (no markdown code blocks):
 If there are no issues, return an empty findings array and a success summary.
 `;
 
-        // 4. Call Gemini API
-        const apiKey = process.env.GEMINI_API_KEY;
+        // 4. Call Claude API
+        const apiKey = process.env.CLAUDE_API_KEY;
         if (!apiKey) {
-            throw new Error("GEMINI_API_KEY is not defined in environment variables.");
+            throw new Error("CLAUDE_API_KEY is not defined in environment variables.");
         }
 
         // 4a. Dynamically find a valid model
@@ -138,9 +138,9 @@ If there are no issues, return an empty findings array and a success summary.
         // We sort them so we can iterate and try each one until success
         const sortedModels = contentModels.sort((a: any, b: any) => {
             const getScore = (name: string) => {
-                if (name.includes("gemini-1.5-flash")) return 10;
-                if (name.includes("gemini-1.5-pro")) return 8;
-                if (name.includes("gemini-pro")) return 5;
+                if (name.includes("claude-1.5-flash")) return 10;
+                if (name.includes("claude-1.5-pro")) return 8;
+                if (name.includes("claude-pro")) return 5;
                 if (name.includes("flash")) return 3;
                 return 1;
             };
@@ -149,19 +149,19 @@ If there are no issues, return an empty findings array and a success summary.
 
         console.log(`[analyzeFlow] Available models (sorted): ${sortedModels.map((m: any) => m.name).join(", ")}`);
 
-        let geminiResponse = null;
+        let claudeResponse = null;
         let lastError = null;
         let successfulModel = "";
 
         // Try models in order
         for (const model of sortedModels) {
             const modelName = model.name.replace("models/", "");
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            const claudeUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
             console.log(`[analyzeFlow] Attempting cleaning with model: ${modelName}`);
 
             try {
-                const response = await fetch(geminiUrl, {
+                const response = await fetch(claudeUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -174,7 +174,7 @@ If there are no issues, return an empty findings array and a success summary.
                 if (response.ok) {
                     // apiResponse = response; 
                     console.log(`[analyzeFlow] Success with model: ${modelName}`);
-                    geminiResponse = response;
+                    claudeResponse = response;
                     successfulModel = modelName;
                     break; // Exit loop on success
                 } else {
@@ -191,15 +191,15 @@ If there are no issues, return an empty findings array and a success summary.
             }
         }
 
-        if (!geminiResponse || !geminiResponse.ok) {
-            throw lastError || new Error("All Gemini models failed to generate content.");
+        if (!claudeResponse || !claudeResponse.ok) {
+            throw lastError || new Error("All Claude models failed to generate content.");
         }
 
-        const geminiData = await geminiResponse.json();
-        const generatedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+        const claudeData = await claudeResponse.json();
+        const generatedText = claudeData.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!generatedText) {
-            throw new Error("Gemini returned no content.");
+            throw new Error("Claude returned no content.");
         }
 
         // 5. Parse and Return Result
@@ -219,8 +219,8 @@ If there are no issues, return an empty findings array and a success summary.
 
             return result;
         } catch (e) {
-            console.error("Failed to parse Gemini response:", generatedText);
-            throw new Error("Failed to parse analysis results from Gemini.");
+            console.error("Failed to parse Claude response:", generatedText);
+            throw new Error("Failed to parse analysis results from Claude.");
         }
     },
 });
@@ -232,13 +232,13 @@ export const assessEnvironmentHealth = action({
         const summary = await ctx.runQuery(api.queries.getEnvironmentHealthSummary, { tenantId: args.tenantId });
         if (!summary) throw new Error("No data available for this tenant.");
 
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-        if (!GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY");
+        const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+        if (!CLAUDE_API_KEY) throw new Error("Missing CLAUDE_API_KEY");
 
         const modelsToTry = [
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro",
+            "claude-2.0-flash",
+            "claude-1.5-flash",
+            "claude-1.5-pro",
         ];
 
         const prompt = `You are a Power Platform / Dynamics 365 environment health auditor. Analyze this environment data and produce a health assessment.
@@ -278,13 +278,13 @@ SCORING GUIDELINES:
 Generate 3-8 actionable advisories ranked by severity. Each remediation should be specific and actionable with concrete steps.
 If certain modules have no data (count is 0), note that data needs to be synced first.`;
 
-        let geminiResponse = null;
+        let claudeResponse = null;
         let successfulModel = "unknown";
         let lastError: Error | null = null;
 
         for (const modelName of modelsToTry) {
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${CLAUDE_API_KEY}`;
                 const response = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -294,7 +294,7 @@ If certain modules have no data (count is 0), note that data needs to be synced 
                     }),
                 });
                 if (response.ok) {
-                    geminiResponse = response;
+                    claudeResponse = response;
                     successfulModel = modelName;
                     break;
                 } else {
@@ -306,13 +306,13 @@ If certain modules have no data (count is 0), note that data needs to be synced 
             }
         }
 
-        if (!geminiResponse || !geminiResponse.ok) {
-            throw lastError || new Error("All Gemini models failed.");
+        if (!claudeResponse || !claudeResponse.ok) {
+            throw lastError || new Error("All Claude models failed.");
         }
 
-        const geminiData = await geminiResponse.json();
-        const generatedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!generatedText) throw new Error("Gemini returned no content.");
+        const claudeData = await claudeResponse.json();
+        const generatedText = claudeData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!generatedText) throw new Error("Claude returned no content.");
 
         const cleanedText = generatedText.replace(/```json/g, "").replace(/```/g, "").trim();
         const result = JSON.parse(cleanedText);

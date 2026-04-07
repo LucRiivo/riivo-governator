@@ -30,7 +30,7 @@ export const analyzeStorageOverview = action({
             throw new Error("No storage data found. Please sync storage data first.");
         }
 
-        // Build summary for Gemini
+        // Build summary for Claude
         const envSummary = environmentStorage.map((env: any) => {
             const tableBreakdown = env.tableBreakdown ? JSON.parse(env.tableBreakdown) : [];
             return {
@@ -132,10 +132,10 @@ The scores should be 0-100 where:
 Be thorough but practical. Focus on actionable findings with estimated storage savings where possible.
 `;
 
-        // Call Gemini
-        const apiKey = process.env.GEMINI_API_KEY;
+        // Call Claude
+        const apiKey = process.env.CLAUDE_API_KEY;
         if (!apiKey) {
-            throw new Error("GEMINI_API_KEY is not defined in environment variables.");
+            throw new Error("CLAUDE_API_KEY is not defined in environment variables.");
         }
 
         const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
@@ -159,27 +159,27 @@ Be thorough but practical. Focus on actionable findings with estimated storage s
 
         const sortedModels = contentModels.sort((a: any, b: any) => {
             const getScore = (name: string) => {
-                if (name.includes("gemini-1.5-flash")) return 10;
-                if (name.includes("gemini-1.5-pro")) return 8;
-                if (name.includes("gemini-pro")) return 5;
+                if (name.includes("claude-1.5-flash")) return 10;
+                if (name.includes("claude-1.5-pro")) return 8;
+                if (name.includes("claude-pro")) return 5;
                 if (name.includes("flash")) return 3;
                 return 1;
             };
             return getScore(b.name) - getScore(a.name);
         });
 
-        let geminiResponse = null;
+        let claudeResponse = null;
         let lastError = null;
         let successfulModel = "";
 
         for (const model of sortedModels) {
             const modelName = model.name.replace("models/", "");
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            const claudeUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
             console.log(`[analyzeStorageOverview] Attempting with model: ${modelName}`);
 
             try {
-                const response = await fetch(geminiUrl, {
+                const response = await fetch(claudeUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -188,7 +188,7 @@ Be thorough but practical. Focus on actionable findings with estimated storage s
                 });
 
                 if (response.ok) {
-                    geminiResponse = response;
+                    claudeResponse = response;
                     successfulModel = modelName;
                     break;
                 } else {
@@ -202,15 +202,15 @@ Be thorough but practical. Focus on actionable findings with estimated storage s
             }
         }
 
-        if (!geminiResponse || !geminiResponse.ok) {
-            throw lastError || new Error("All Gemini models failed to generate content.");
+        if (!claudeResponse || !claudeResponse.ok) {
+            throw lastError || new Error("All Claude models failed to generate content.");
         }
 
-        const geminiData = await geminiResponse.json();
-        const generatedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+        const claudeData = await claudeResponse.json();
+        const generatedText = claudeData.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!generatedText) {
-            throw new Error("Gemini returned no content.");
+            throw new Error("Claude returned no content.");
         }
 
         try {
@@ -226,8 +226,8 @@ Be thorough but practical. Focus on actionable findings with estimated storage s
 
             return result;
         } catch (e) {
-            console.error("Failed to parse Gemini storage audit response:", generatedText);
-            throw new Error("Failed to parse storage analysis results from Gemini.");
+            console.error("Failed to parse Claude storage audit response:", generatedText);
+            throw new Error("Failed to parse storage analysis results from Claude.");
         }
     },
 });

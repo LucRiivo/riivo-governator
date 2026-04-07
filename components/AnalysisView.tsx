@@ -200,7 +200,7 @@ export default function AnalysisView({
                             className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
                         >
                             {isAnalyzing ? <RefreshCw className="animate-spin" size={20} /> : <Zap size={20} fill="currentColor" />}
-                            {isAnalyzing ? 'Running Audit...' : (displayResult ? 'Re-run Audit' : 'Audit Logic with Gemini')}
+                            {isAnalyzing ? 'Running Audit...' : (displayResult ? 'Re-run Audit' : 'Audit Logic with Claude')}
                         </button>
                     </div>
 
@@ -213,7 +213,7 @@ export default function AnalysisView({
                                     </div>
                                     <span className="font-medium">{displayResult.summary}</span>
                                 </div>
-                                <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded font-mono uppercase">gemini-2.5-flash</span>
+                                <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded font-mono uppercase">claude-2.5-flash</span>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

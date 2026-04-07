@@ -16,6 +16,7 @@ import {
     Box,
 } from 'lucide-react';
 import { Tenant } from '../Sidebar';
+import EntityDocumentationEditor from '../EntityDocumentationEditor';
 
 interface WebResourceDetailViewProps {
     selectedItem: any;
@@ -90,7 +91,7 @@ export default function WebResourceDetailView({
     const [isAuditing, setIsAuditing] = useState(false);
     const [auditResult, setAuditResult] = useState<any>(null);
     const [copied, setCopied] = useState(false);
-    const [selectedSubTab, setSelectedSubTab] = useState<'code' | 'audit'>('code');
+    const [selectedSubTab, setSelectedSubTab] = useState<'code' | 'audit' | 'docs'>('code');
 
     // Cached audit result
     const cachedAudit = useQuery(
@@ -162,7 +163,7 @@ export default function WebResourceDetailView({
                     category: "System",
                     title: "Audit Error",
                     description: error instanceof Error ? error.message : "Unknown error",
-                    suggestion: "Ensure the Gemini API key is configured."
+                    suggestion: "Ensure the Claude API key is configured."
                 }],
                 stats: { totalIssues: 1 }
             });
@@ -249,6 +250,17 @@ export default function WebResourceDetailView({
                                     Audit
                                 </button>
                             )}
+                            {isAuditable && (
+                                <button
+                                    onClick={() => setSelectedSubTab('docs')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedSubTab === 'docs'
+                                        ? 'bg-white text-slate-800 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                >
+                                    Documentation
+                                </button>
+                            )}
                         </div>
 
                         {isAuditable && (
@@ -327,6 +339,20 @@ export default function WebResourceDetailView({
                                 content && !content.isTextBased ? "// Binary content - cannot display" :
                                     "// Failed to load content"}
                     </div>
+                </div>
+            )}
+
+            {/* Documentation */}
+            {selectedSubTab === 'docs' && activeTenant?.tenantId && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <EntityDocumentationEditor
+                        docType="webresource"
+                        tenantId={activeTenant.tenantId}
+                        webResourceId={selectedItem._id}
+                        webResourceName={selectedItem.displayName || selectedItem.name}
+                        webResourceType={WEB_RESOURCE_TYPE_LABELS[selectedItem.webResourceType] || 'JavaScript'}
+                        webResourceCode={content?.decodedContent}
+                    />
                 </div>
             )}
 
@@ -422,7 +448,7 @@ export default function WebResourceDetailView({
                                 <Zap size={32} className="text-slate-300" />
                             </div>
                             <p className="font-semibold text-slate-500 mb-1">No Audit Results</p>
-                            <p className="text-sm text-slate-400">Click &quot;Audit Code&quot; to analyze this web resource with Gemini AI.</p>
+                            <p className="text-sm text-slate-400">Click &quot;Audit Code&quot; to analyze this web resource with Claude AI.</p>
                         </div>
                     )}
                 </div>

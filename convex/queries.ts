@@ -89,6 +89,58 @@ export const getConfluenceSettingsByUserId = query({
     },
 });
 
+// ERD Queries
+export const getErdDiagram = query({
+    args: { tenantId: v.string(), appModuleId: v.string() },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("erd_diagrams")
+            .withIndex("by_app", (q) => q.eq("tenantId", args.tenantId).eq("appModuleId", args.appModuleId))
+            .first();
+    },
+});
+
+// Bulk Documentation Job Queries
+export const getBulkDocJob = query({
+    args: { tenantId: v.string() },
+    handler: async (ctx, args) => {
+        const jobs = await ctx.db
+            .query("bulk_doc_jobs")
+            .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
+            .order("desc")
+            .take(1);
+        return jobs[0] ?? null;
+    },
+});
+
+export const getBulkDocJobById = query({
+    args: { jobId: v.id("bulk_doc_jobs") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.jobId);
+    },
+});
+
+export const getFlowDocumentationStats = query({
+    args: { tenantId: v.string() },
+    handler: async (ctx, args) => {
+        const flows = await ctx.db
+            .query("flows")
+            .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
+            .collect();
+
+        const allDocs = await ctx.db.query("flow_documentation").collect();
+        const flowIds = new Set(flows.map((f) => f._id));
+        const docs = allDocs.filter((d) => flowIds.has(d.flowId));
+
+        return {
+            totalFlows: flows.length,
+            withDefinitions: flows.filter((f) => !!f.clientData).length,
+            documented: docs.length,
+            published: docs.filter((d) => !!d.confluencePageId).length,
+        };
+    },
+});
+
 // Phase 1: Security Queries
 export const getBusinessUnits = query({
     args: { tenantId: v.optional(v.string()) },

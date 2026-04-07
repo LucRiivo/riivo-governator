@@ -588,7 +588,7 @@ function StorageRecommendations({ audit, loading, onAnalyze, hasData }: { audit:
                 <Loader2 size={40} className="mx-auto text-amber-500 mb-3 animate-spin" />
                 <h3 className="font-semibold text-slate-600 mb-1">Analyzing Storage...</h3>
                 <p className="text-sm text-slate-400">
-                    Gemini is reviewing your environment storage data and generating recommendations.
+                    Claude is reviewing your environment storage data and generating recommendations.
                 </p>
             </div>
         );

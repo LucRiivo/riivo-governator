@@ -103,7 +103,7 @@ export default defineSchema({
         .index("by_teamId", ["teamId"]),
     security_audit_results: defineTable({
         tenantId: v.string(),
-        result: v.string(), // JSON result from Gemini
+        result: v.string(), // JSON result from Claude
         timestamp: v.number(),
         model: v.optional(v.string()),
     }).index("by_tenant", ["tenantId"]),
@@ -125,7 +125,7 @@ export default defineSchema({
     web_resource_audit_results: defineTable({
         webResourceId: v.id("web_resources"), // Convex doc ID
         tenantId: v.string(),
-        result: v.string(), // JSON result from Gemini
+        result: v.string(), // JSON result from Claude
         timestamp: v.number(),
         model: v.optional(v.string()),
     }).index("by_webResourceId", ["webResourceId"])
@@ -171,14 +171,14 @@ export default defineSchema({
         .index("by_entity", ["tenantId", "entityLogicalName"]),
     app_landscape_audit_results: defineTable({
         tenantId: v.string(),
-        result: v.string(), // JSON result from Gemini
+        result: v.string(), // JSON result from Claude
         timestamp: v.number(),
         model: v.optional(v.string()),
     }).index("by_tenant", ["tenantId"]),
     app_audit_results: defineTable({
         appId: v.id("model_driven_apps"), // Convex doc ID for the app
         tenantId: v.string(),
-        result: v.string(), // JSON result from Gemini
+        result: v.string(), // JSON result from Claude
         timestamp: v.number(),
         model: v.optional(v.string()),
     }).index("by_appId", ["appId"])
@@ -231,9 +231,72 @@ export default defineSchema({
         .index("by_envId", ["tenantId", "envId"]),
     storage_audit_results: defineTable({
         tenantId: v.string(),
-        result: v.string(), // JSON result from Gemini
+        result: v.string(), // JSON result from Claude
         timestamp: v.number(),
         model: v.optional(v.string()),
+    }).index("by_tenant", ["tenantId"]),
+
+    // ERD (Entity Relationship Diagram) - per model-driven app
+    erd_diagrams: defineTable({
+        tenantId: v.string(),
+        appModuleId: v.string(), // D365 app module GUID
+        mermaidCode: v.string(), // Mermaid ERD source code
+        status: v.string(), // 'draft' | 'published'
+        confluencePageId: v.optional(v.string()),
+        confluenceUrl: v.optional(v.string()),
+        lastGenerated: v.number(),
+    }).index("by_tenant", ["tenantId"])
+      .index("by_app", ["tenantId", "appModuleId"]),
+
+    // Security Documentation
+    security_documentation: defineTable({
+        tenantId: v.string(),
+        content: v.string(),
+        status: v.string(), // 'draft' | 'published'
+        confluencePageId: v.optional(v.string()),
+        confluenceUrl: v.optional(v.string()),
+        lastUpdated: v.number(),
+    }).index("by_tenant", ["tenantId"]),
+
+    // App Documentation (per model-driven app)
+    app_documentation: defineTable({
+        appId: v.id("model_driven_apps"),
+        content: v.string(),
+        status: v.string(),
+        confluencePageId: v.optional(v.string()),
+        confluenceUrl: v.optional(v.string()),
+        lastUpdated: v.number(),
+    }).index("by_appId", ["appId"]),
+
+    // Web Resource Documentation (per web resource)
+    web_resource_documentation: defineTable({
+        webResourceId: v.id("web_resources"),
+        content: v.string(),
+        status: v.string(),
+        confluencePageId: v.optional(v.string()),
+        confluenceUrl: v.optional(v.string()),
+        lastUpdated: v.number(),
+    }).index("by_webResourceId", ["webResourceId"]),
+
+    // Bulk Documentation Jobs
+    bulk_doc_jobs: defineTable({
+        tenantId: v.string(),
+        phase: v.string(),          // 'fetching' | 'generating' | 'publishing' | 'done'
+        status: v.string(),         // 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+        totalFlows: v.number(),
+        completedFlows: v.number(),
+        publishedFlows: v.number(),
+        failedFlows: v.number(),
+        skippedFlows: v.number(),
+        errors: v.array(v.object({
+            flowId: v.string(),
+            flowName: v.string(),
+            phase: v.string(),      // 'fetch' | 'generate' | 'publish'
+            error: v.string(),
+        })),
+        startedAt: v.number(),
+        completedAt: v.optional(v.number()),
+        requestedBy: v.string(),
     }).index("by_tenant", ["tenantId"]),
 
     // Phase 6: Environment Health Dashboard

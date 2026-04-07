@@ -166,6 +166,133 @@ export const updateFlowClientData = mutation({
     }
 });
 
+// ERD Mutations
+export const saveErdDiagram = mutation({
+    args: {
+        tenantId: v.string(),
+        appModuleId: v.string(),
+        mermaidCode: v.string(),
+        status: v.string(),
+        confluencePageId: v.optional(v.string()),
+        confluenceUrl: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const existing = await ctx.db
+            .query("erd_diagrams")
+            .withIndex("by_app", (q) => q.eq("tenantId", args.tenantId).eq("appModuleId", args.appModuleId))
+            .first();
+
+        if (existing) {
+            await ctx.db.patch(existing._id, {
+                mermaidCode: args.mermaidCode,
+                status: args.status,
+                confluencePageId: args.confluencePageId ?? existing.confluencePageId,
+                confluenceUrl: args.confluenceUrl ?? existing.confluenceUrl,
+                lastGenerated: Date.now(),
+            });
+        } else {
+            await ctx.db.insert("erd_diagrams", {
+                tenantId: args.tenantId,
+                appModuleId: args.appModuleId,
+                mermaidCode: args.mermaidCode,
+                status: args.status,
+                confluencePageId: args.confluencePageId,
+                confluenceUrl: args.confluenceUrl,
+                lastGenerated: Date.now(),
+            });
+        }
+    },
+});
+
+// Bulk Documentation Job Mutations
+export const createBulkDocJob = mutation({
+    args: {
+        tenantId: v.string(),
+        totalFlows: v.number(),
+        requestedBy: v.string(),
+    },
+    handler: async (ctx, args) => {
+        return await ctx.db.insert("bulk_doc_jobs", {
+            tenantId: args.tenantId,
+            phase: "fetching",
+            status: "running",
+            totalFlows: args.totalFlows,
+            completedFlows: 0,
+            publishedFlows: 0,
+            failedFlows: 0,
+            skippedFlows: 0,
+            errors: [],
+            startedAt: Date.now(),
+            requestedBy: args.requestedBy,
+        });
+    },
+});
+
+export const updateBulkDocJobProgress = mutation({
+    args: {
+        jobId: v.id("bulk_doc_jobs"),
+        completedFlows: v.optional(v.number()),
+        publishedFlows: v.optional(v.number()),
+        failedFlows: v.optional(v.number()),
+        skippedFlows: v.optional(v.number()),
+        newErrors: v.optional(v.array(v.object({
+            flowId: v.string(),
+            flowName: v.string(),
+            phase: v.string(),
+            error: v.string(),
+        }))),
+    },
+    handler: async (ctx, args) => {
+        const job = await ctx.db.get(args.jobId);
+        if (!job) throw new Error("Job not found");
+
+        const patch: any = {};
+        if (args.completedFlows !== undefined) patch.completedFlows = args.completedFlows;
+        if (args.publishedFlows !== undefined) patch.publishedFlows = args.publishedFlows;
+        if (args.failedFlows !== undefined) patch.failedFlows = args.failedFlows;
+        if (args.skippedFlows !== undefined) patch.skippedFlows = args.skippedFlows;
+        if (args.newErrors && args.newErrors.length > 0) {
+            patch.errors = [...job.errors, ...args.newErrors];
+        }
+
+        await ctx.db.patch(args.jobId, patch);
+    },
+});
+
+export const updateBulkDocJobPhase = mutation({
+    args: {
+        jobId: v.id("bulk_doc_jobs"),
+        phase: v.string(),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.jobId, { phase: args.phase });
+    },
+});
+
+export const completeBulkDocJob = mutation({
+    args: {
+        jobId: v.id("bulk_doc_jobs"),
+        status: v.string(),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.jobId, {
+            phase: "done",
+            status: args.status,
+            completedAt: Date.now(),
+        });
+    },
+});
+
+export const cancelBulkDocJob = mutation({
+    args: { jobId: v.id("bulk_doc_jobs") },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.jobId, {
+            status: "cancelled",
+            completedAt: Date.now(),
+        });
+    },
+});
+
 // Phase 1: Security Mutations
 export const upsertBusinessUnits = mutation({
     args: {
